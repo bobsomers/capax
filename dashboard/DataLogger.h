@@ -7,7 +7,6 @@
 #include <QDataStream>
 #include <QDateTime>
 
-#include "buildctrl.h"
 #include "ucvtypes.h"
 
 // record types (single byte identifiers)

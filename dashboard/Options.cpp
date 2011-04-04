@@ -85,7 +85,7 @@ Options::~Options()
 
 void Options::ShutdownButtonClicked()
 {
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     LUID luid;
     TOKEN_PRIVILEGES privs;
     HANDLE token;

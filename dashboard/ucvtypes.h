@@ -1,8 +1,6 @@
 #ifndef UCVTYPES_H
 #define UCVTYPES_H
 
-#include "buildctrl.h"
-
 #define BUTTON_FONT_SIZE 16
 #define LABEL_FONT_SIZE 14
 

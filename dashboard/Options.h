@@ -14,11 +14,10 @@
 #include <QMessageBox>
 #include <QFile>
 
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     #include <windows.h>
 #endif
 
-#include "buildctrl.h"
 #include "ucvtypes.h"
 
 class Options : public QWidget

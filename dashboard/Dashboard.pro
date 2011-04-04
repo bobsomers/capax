@@ -15,9 +15,11 @@ HEADERS += TestHarness.h \
     DataLogger.h \
     Dashboard.h \
     Hardware.h \
-    buildctrl.h \
     Options.h \
     main.h \
     qneedleindicator.h
 LIBS += -lws2_32
-CONFIG += release
+
+CONFIG(release, debug|release) {
+    DEFINES *= RUNNING_IN_CAR
+}

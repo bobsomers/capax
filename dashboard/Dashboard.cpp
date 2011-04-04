@@ -112,7 +112,7 @@ Dashboard::Dashboard(QWidget *parent)
     connect(options_button, SIGNAL(clicked()), this, SLOT(OptionsButtonClicked()));
 
     // go full screen if in production mode
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     showFullScreen();
 #endif
 }
@@ -175,7 +175,7 @@ void Dashboard::TmrUpdate(int ms)
 
 void Dashboard::OptionsButtonClicked()
 {
-#ifdef DEVMODE
+#ifndef RUNNING_IN_CAR
     options->show();
 #else
     options->showFullScreen();

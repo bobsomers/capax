@@ -9,12 +9,11 @@
 #include <QMessageBox>
 #include <QRegExp>
 
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     #include <windows.h>
     #include <winsock2.h>
 #endif
 
-#include "buildctrl.h"
 #include "DataLogger.h"
 #include "Dashboard.h"
 #include "ucvtypes.h"
@@ -76,7 +75,7 @@ private:
     DataLogger *logger;
     Dashboard *dashboard;
 
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     HANDLE hEcuUart;
     HANDLE hGpsUart;
     HANDLE hImuUart;

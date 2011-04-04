@@ -29,7 +29,7 @@ Hardware::Hardware()
     connect(dashboard, SIGNAL(StartRun()), this, SLOT(TmrStart()));
     connect(dashboard, SIGNAL(StopRun()), this, SLOT(TmrStop()));
 
-#ifndef DEVMODE
+#ifdef RELEASE
     // open serial ports to grab uart data
     OpenUarts();
 #endif
@@ -42,7 +42,7 @@ Hardware::~Hardware()
 {
     delete time;
 
-#ifndef DEVMODE
+#ifdef RELEASE
     // close down serial ports
     CloseUarts();
 #endif
@@ -82,7 +82,7 @@ void Hardware::TimerTick()
         }
     }
 
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
     // process hardware updates
     ProcessEcu();
     ProcessGps();
@@ -96,7 +96,7 @@ void Hardware::WlsDataSend(QByteArray data)
     // TODO
 }
 
-#ifndef DEVMODE
+#ifdef RUNNING_IN_CAR
 void Hardware::OpenUarts()
 {
     QMessageBox msg;

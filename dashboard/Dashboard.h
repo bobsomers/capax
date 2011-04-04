@@ -7,7 +7,6 @@
 #include <QGridLayout>
 #include <QPushButton>
 
-#include "buildctrl.h"
 #include "ucvtypes.h"
 #include "Options.h"
 #include "qneedleindicator.h"

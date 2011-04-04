@@ -3,9 +3,7 @@
 
 #include <QApplication>
 
-#include "buildctrl.h"
-
-#ifdef DEVMODE
+#ifndef RUNNING_IN_CAR
     #include "TestHarness.h"
 #else
     #include <windows.h>

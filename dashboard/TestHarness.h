@@ -15,7 +15,6 @@
 #include <QMessageBox>
 #include <QByteArray>
 
-#include "buildctrl.h"
 #include "DataLogger.h"
 #include "Dashboard.h"
 #include "ucvtypes.h"
