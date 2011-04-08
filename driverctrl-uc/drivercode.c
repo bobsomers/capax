@@ -18,6 +18,12 @@
 // over the ATmega168's UART at 115200 baud.
 // ===========================================
 
+// Modified by Bob Somers on 4/8/11 to fix
+// the strange "ghost in the machine" bug where
+// lights would turn on after certain events
+// like running the horn or starter or flicking
+// the driver kill switch.
+
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -51,8 +57,7 @@ volatile int buttons_locked_out = 0;
 // UART FUNCTIONS
 // ===========================================
 
-void uart_init()
-{
+void uart_init() {
 	// based on 7.3728 MHz clock and a 115200 bps baud rate
 	UBRR0H = 0;
 	UBRR0L = 3;
@@ -64,8 +69,7 @@ void uart_init()
 	UCSR0B = (1 << RXEN0) | (1 << TXEN0);
 }
 
-void uart_send(uint8_t byte)
-{
+void uart_send(uint8_t byte) {
 	// wait until the uart is ready
 	while ((UCSR0A & (1 << UDRE0)) == 0);
 	
@@ -74,10 +78,8 @@ void uart_send(uint8_t byte)
 }
 
 // asynchronous, returns true/false immediately if data contains a valid byte
-uint8_t uart_receive(uint8_t *data)
-{
-	if (!(UCSR0A & (1 << RXC0)))
-	{
+uint8_t uart_receive(uint8_t *data) {
+	if (!(UCSR0A & (1 << RXC0))) {
 		// nothing ready
 		return 0;
 	}
@@ -89,184 +91,155 @@ uint8_t uart_receive(uint8_t *data)
 	return 1;
 }
 
-void uart_print(char *string, int len)
-{
+void uart_print(char *string, int len) {
 	int i;
 
-	for (i = 0; i < len; i++)
-	{
+	for (i = 0; i < len; i++) {
 		uart_send(string[i]);
 	}
+}
+
+// ===========================================
+// PORT FUNCTIONS
+// ===========================================
+
+void ports_init() {
+    // B7-5 input, B4-3 output, B2-0 input
+	DDRB = (1 << DDB4) | (1 << DDB3);
+
+    // C6-0 input
+    DDRC = 0x0;
+
+    // D7-2 output, D1-0 uart
+    DDRD = (1 << DDD7) | (1 << DDD6) | (1 << DDD5) | (1 << DDD4) | (1 << DDD3) | (1 << DDD2);
 }
 
 // ===========================================
 // LED FUNCTIONS
 // ===========================================
 
-void leds_init()
-{
-	// put B4 and B3 in output mode
-	DDRB |= (0x3 << 3);
+void led_set(uint8_t which, uint8_t status) {
+    static uint8_t port_b = 0x0;
+    static uint8_t port_d = 0x0;
 
-	// put D7, D6, D5, D4, D3, D2 in output mode (D1 and D0 are uart)
-	DDRD |= (0x3f << 2);
-}
+    // figure out the bitmask for this led
+    uint8_t mask = 0x0;
+    switch (which) {
+        case STARTER:
+            mask = (1 << PB4);
+            break;
 
-void led_set(uint8_t which, uint8_t status)
-{
-	switch (which)
-	{
-		case STARTER:
-			if (status)
-			{
-				PORTB |= (1 << 4);
-			}
-			else
-			{
-				PORTB &= ~(1 << 4);
-			}
-			break;
+        case HORN:
+            mask = (1 << PB3);
+            break;
 
-		case HORN:
-			if (status)
-			{
-				PORTB |= (1 << 3);
-			}
-			else
-			{
-				PORTB &= ~(1 << 3);
-			}
-			break;
+        case HEAD_LTS:
+            mask = (1 << PD7);
+            break;
 
-		case HEAD_LTS:
-			if (status)
-			{
-				PORTD |= (1 << 7);
-			}
-			else
-			{
-				PORTD &= ~(1 << 7);
-			}
-			break;
-		
-		case BRAKE_LTS:
-			if (status)
-			{
-				PORTD |= (1 << 6);
-			}
-			else
-			{
-				PORTD &= ~(1 << 6);
-			}
-			break;
-			
-		case LTURN_LTS:
-			if (status)
-			{
-				PORTD |= (1 << 5);
-			}
-			else
-			{
-				PORTD &= ~(1 << 5);
-			}
-			break;
-		
-		case RTURN_LTS:
-			if (status)
-			{
-				PORTD |= (1 << 4);
-			}
-			else
-			{
-				PORTD &= ~(1 << 4);
-			}
-			break;
+        case BRAKE_LTS:
+            mask = (1 << PD6);
+            break;
+        
+        case LTURN_LTS:
+            mask = (1 << PD5);
+            break;
 
-		case DRIVER_LEFT:
-			if (status)
-			{
-				PORTD |= (1 << 3);
-			}
-			else
-			{
-				PORTD &= ~(1 << 3);
-			}
-			break;
+        case RTURN_LTS:
+            mask = (1 << PD4);
+            break;
 
-		case DRIVER_RIGHT:
-			if (status)
-			{
-				PORTD |= (1 << 2);
-			}
-			else
-			{
-				PORTD &= ~(1 << 2);
-			}
-			break;
+        case DRIVER_LEFT:
+            mask = (1 << PD3);
+            break;
 
-		default:
-			break;
-	}
+        case DRIVER_RIGHT:
+            mask = (1 << PD2);
+            break;
+
+        default:
+            break;
+    }
+
+    // apply the mask to the current led state
+    if (status) {
+        if (which == STARTER || which == HORN) {
+            port_b |= mask;
+            PORTB = port_b;
+        } else {
+            port_d |= mask;
+            PORTD = port_d;
+        }
+    } else {
+        if (which == STARTER || which == HORN) {
+            port_b &= ~mask;
+            PORTB = port_b;
+        } else {
+            port_d &= ~mask;
+            PORTD = port_d;
+        }
+    }
 }
 
 // ===========================================
 // BUTTON FUNCTIONS
 // ===========================================
 
-void buttons_init()
-{
-	// put C5, C4, C3, C2, C1, and C0 in input mode
-	DDRC &= ~(0x3f);
+uint8_t button_get(uint8_t which) {
+    uint8_t mask = 0x0;
+    switch (which) {
+        case LEFT_TOP:
+            mask = (1 << PINC5);
+            break;
 
-	// put B2, B1, and B0 in input mode
-	DDRC &= ~(0x7);
-}
+        case LEFT_MID:
+            mask = (1 << PINC4);
+            break;
 
-uint8_t button_get(uint8_t which)
-{
-	switch (which)
-	{
-		case LEFT_TOP:
-			return !(PINC & (1 << 5));
-			break;
+        case LEFT_BOT:
+            mask = (1 << PINC3);
+            break;
 
-		case LEFT_MID:
-			return !(PINC & (1 << 4));
-			break;
+        case LEFT_PAD:
+            mask = (1 << PINB2);
+            break;
 
-		case LEFT_BOT:
-			return !(PINC & (1 << 3));
-			break;
-		
-		case LEFT_PAD:
-			return !(PINB & (1 << 2));
-			break;
-			
-		case RIGHT_TOP:
-			return !(PINC & (1 << 2));
-			break;
-		
-		case RIGHT_MID:
-			return !(PINC & (1 << 1));
-			break;
+        case RIGHT_TOP:
+            mask = (1 << PINC2);
+            break;
 
-		case RIGHT_BOT:
-			return !(PINC & (1 << 0));
-			break;
+        case RIGHT_MID:
+            mask = (1 << PINC1);
+            break;
 
-		case RIGHT_PAD:
-			return !(PINB & (1 << 1));
-			break;
+        case RIGHT_BOT:
+            mask = (1 << PINC0);
+            break;
 
-		case BRAKE_SW:
-			return !(PINB & (1 << 0));
-			break;
+        case RIGHT_PAD:
+            mask = (1 << PINB1);
+            break;
 
-		default:
-			break;
-	}
+        case BRAKE_SW:
+            mask = (1 << PINB0);
+            break;
 
-	return 0;
+        default:
+            break;
+    }
+
+    uint8_t value = 1;
+    if (which == LEFT_PAD || which == RIGHT_PAD || which == BRAKE_SW) {
+        value = PINB & mask;
+    } else if (which == LEFT_TOP || which == LEFT_MID || which == LEFT_BOT ||
+               which == RIGHT_TOP || which == RIGHT_MID || which == RIGHT_BOT) {
+        value = PINC & mask;
+    } else {
+        value = 1;
+    }
+    value = !value;
+
+    return value;
 }
 
 // ===========================================
@@ -352,9 +325,8 @@ int main()
 	uint8_t hzd_state = 0;
 
 	// get the subsystems up and running
+    ports_init();
 	uart_init();
-	leds_init();
-	buttons_init();
 	timer_init();
 	debouncer_init();
 
@@ -475,14 +447,21 @@ int main()
 			uart_send('$'); uart_send('n'); uart_send('='); uart_send(buttons[LEFT_TOP] + 48); uart_send('\r'); uart_send('\n');
 		}
 
-		// output uart on every edge change of a
-		if (prev[LEFT_BOT] != buttons[LEFT_BOT])
+        // HACK! try locking out on the falling edge of the starter/horn to get rid
+        // of the "ghost in the machine" bug
+        if ((prev[RIGHT_TOP] && !buttons[RIGHT_TOP]) ||
+            (prev[LEFT_TOP] && !buttons[LEFT_TOP])) {
+            debouncer_lockout();
+        }
+
+		// output uart on every edge change of a (HACK: no changes while others locked out, GIM bug)
+		if ((prev[LEFT_BOT] != buttons[LEFT_BOT]) && !buttons_locked_out)
 		{
 			uart_send('$'); uart_send('a'); uart_send('='); uart_send(buttons[LEFT_BOT] + 48); uart_send('\r'); uart_send('\n');
 		}
 
-		// output uart on every edge change of b
-		if (prev[RIGHT_BOT] != buttons[RIGHT_BOT])
+		// output uart on every edge change of b (HACK: no changes while others locked out, GIM bug)
+		if (prev[RIGHT_BOT] != buttons[RIGHT_BOT] && !buttons_locked_out)
 		{
 			uart_send('$'); uart_send('b'); uart_send('='); uart_send(buttons[RIGHT_BOT] + 48); uart_send('\r'); uart_send('\n');
 		}
